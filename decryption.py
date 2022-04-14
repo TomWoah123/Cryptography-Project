@@ -61,6 +61,13 @@ def inverse_mix_columns(message_data: list) -> list:
 
 
 def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
+    """
+    This function performs the AES Decryption algorithm on the given ciphertext string with the given valid initial key
+    :param c_text: The cipher text
+    :param init_key: The given valid initial key
+    :param decryption_mode: The type of decryption mode (ECB or CBC)
+    :return: The plaintext of the ciphertext with the given key
+    """
     decrypted_block = []
     round_number = key_expansion.round_types.get(len(init_key) // 2)
     expanded_key = key_expansion.key_expansion(init_key)
@@ -70,11 +77,14 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
     decrypted_block_index = 0
     while ciphertext_index < len(ciphertext_as_bytes):
         key_block_index = len(expanded_key_bytes) - (len(init_key) // 2)
+
+        # Add Round Key
         key_block = expanded_key_bytes[key_block_index:key_block_index + 16]
         key_block_index -= 16
         ciphertext_block = ciphertext_as_bytes[ciphertext_index:ciphertext_index + 16]
         plaintext_block = encryption.add_round_key(ciphertext_block, key_block)
 
+        # Inverse Shift Rows
         message_matrix = inverse_shift_rows(plaintext_block)
         for row in range(len(message_matrix)):
             for col in range(len(message_matrix[row])):
@@ -88,17 +98,20 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
             plaintext += key_expansion.convert_bytes_to_string(column)
         plaintext_block = key_expansion.convert_string_to_bytes(plaintext)
 
+        # Inverse Sub Bytes
         counter = 0
         for c in range(len(plaintext_block)):
             plaintext_block[c] = inverse_sub_bytes(plaintext[counter: counter + 2])
             counter += 2
             plaintext_block[c] = key_expansion.convert_string_to_bytes(plaintext_block[c])[0]
 
+        # Add Round Key
         key_block = expanded_key_bytes[key_block_index:key_block_index + 16]
         key_block_index -= 16
         plaintext_block = encryption.add_round_key(plaintext_block, key_block)
 
         for i in range(round_number - 1):
+            # Inverse Mix Columns
             message_matrix = [[] for i in range(4)]
             for index in range(len(plaintext_block)):
                 message_matrix[index % 4].append(plaintext_block[index])
@@ -111,6 +124,7 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
                 plaintext += key_expansion.convert_bytes_to_string(column)
             plaintext_block = key_expansion.convert_string_to_bytes(plaintext)
 
+            # Inverse Shift Rows
             message_matrix = inverse_shift_rows(plaintext_block)
             for row in range(len(message_matrix)):
                 for col in range(len(message_matrix[row])):
@@ -125,20 +139,20 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
                 plaintext += key_expansion.convert_bytes_to_string(column)
             plaintext_block = key_expansion.convert_string_to_bytes(plaintext)
 
+            # Inverse Sub Bytes
             counter = 0
             for c in range(len(plaintext_block)):
                 plaintext_block[c] = inverse_sub_bytes(plaintext[counter: counter + 2])
                 counter += 2
                 plaintext_block[c] = key_expansion.convert_string_to_bytes(plaintext_block[c])[0]
-            # plaintext = key_expansion.convert_bytes_to_string(plaintext_block)
 
+            # Add Round Key
             key_block = expanded_key_bytes[key_block_index:key_block_index + 16]
             key_block_index -= 16
             plaintext_block = encryption.add_round_key(plaintext_block, key_block)
-            # plaintext = key_expansion.convert_bytes_to_string(plaintext_block)
-        decrypted_block.append(plaintext_block)
+        decrypted_block.extend(list(plaintext_block))
         ciphertext_index += 16
-    return key_expansion.convert_bytes_to_string(decrypted_block[0])
+    return key_expansion.convert_bytes_to_string(decrypted_block)
 
 
 
