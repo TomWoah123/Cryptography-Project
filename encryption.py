@@ -37,8 +37,8 @@ def sub_bytes(text: str) -> str:
 def shift_rows(message_data: list) -> list:
     """
     This function stores the 16-bit block into a matrix and shifts the rows
-    :param message_data:
-    :return:
+    :param message_data: The text written as a list of bytes
+    :return: The byte matrix shifted around
     """
     matrix = [[] for i in range(4)]
     for index in range(len(message_data)):
@@ -80,6 +80,7 @@ def encryption(p_text: str, init_key: str, encryption_mode: str) -> str:
         plaintext_block = plaintext_as_bytes[plaintext_index:plaintext_index + 16]
         expanded_key_index = 0
         expanded_key_block = key_expanded[expanded_key_index:expanded_key_index + 16]
+        # Add Round Key
         ciphertext_block = add_round_key(plaintext_block, expanded_key_block)
         if plaintext_index >= 16 and encryption_mode.upper() == "CBC":
             ciphertext_block = add_round_key(ciphertext_block,
@@ -87,16 +88,19 @@ def encryption(p_text: str, init_key: str, encryption_mode: str) -> str:
             encrypted_block_index += 16
         ciphertext = key_expansion.convert_bytes_to_string(ciphertext_block)
         for j in range(round_number - 1):
+            # Sub Bytes
             counter = 0
             for c in range(len(ciphertext_block)):
                 ciphertext_block[c] = sub_bytes(ciphertext[counter:counter+2])
                 counter += 2
                 ciphertext_block[c] = key_expansion.convert_string_to_bytes(ciphertext_block[c])
+            # Shift Rows
             message_matrix = shift_rows(ciphertext_block)
             for row in range(len(message_matrix)):
                 for col in range(len(message_matrix[row])):
                     message_matrix[row][col] = key_expansion.convert_bytes_to_string(list(message_matrix[row][col]))
                     message_matrix[row][col] = key_expansion.convert_string_to_bytes(''.join(message_matrix[row][col]))[0]
+            # Mix Columns
             ciphertext = ""
             for col in range(len(message_matrix[row])):
                 column = []
@@ -104,17 +108,20 @@ def encryption(p_text: str, init_key: str, encryption_mode: str) -> str:
                     column.append(message_matrix[row][col])
                 column = mix_columns(column)
                 ciphertext += key_expansion.convert_bytes_to_string(column)
+            # Add Round Key
             ciphertext_block = key_expansion.convert_string_to_bytes(ciphertext)
             expanded_key_index += 16
             key_block = key_expanded[expanded_key_index:expanded_key_index+16]
             ciphertext_block = add_round_key(ciphertext_block, key_block)
             ciphertext = key_expansion.convert_bytes_to_string(ciphertext_block)
 
+        # Sub Bytes
         counter = 0
         for c in range(len(ciphertext_block)):
             ciphertext_block[c] = sub_bytes(ciphertext[counter:counter + 2])
             counter += 2
             ciphertext_block[c] = key_expansion.convert_string_to_bytes(ciphertext_block[c])
+        # Shift Rows
         message_matrix = shift_rows(ciphertext_block)
         ciphertext_block_index = 0
         for col in range(len(message_matrix[row])):
@@ -124,6 +131,7 @@ def encryption(p_text: str, init_key: str, encryption_mode: str) -> str:
             for c in column:
                 ciphertext_block[ciphertext_block_index] = c[0]
                 ciphertext_block_index += 1
+        # Add Round Key
         expanded_key_index += 16
         key_block = key_expanded[expanded_key_index:expanded_key_index + 16]
         ciphertext_block = add_round_key(ciphertext_block, key_block)

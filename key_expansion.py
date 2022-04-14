@@ -153,3 +153,6 @@ def main():
         initial_key = input("The initial key you typed was not 16-bytes, 24-bytes, or 32 bytes long. Try again: ")
     print("The expanded key is", key_expansion(initial_key))
 
+if __name__ == "__main__":
+    main()
+
