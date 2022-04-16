@@ -67,10 +67,3 @@ def left_shift(list_one: list) -> list:
     """
     list_shifted = [0] + list_one
     return list_shifted[0:9]
-
-
-# polynomial_one = [1, 1, 1, 0, 0, 0, 1, 1]
-# polynomial_two = [1, 1, 0, 1, 1, 0, 1, 1]
-
-
-

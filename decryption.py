@@ -9,6 +9,7 @@ Date: 2/21/2022
 import key_expansion
 import aes
 import encryption
+import sys
 
 # This section of code reads the input from the sbox.txt file and makes a reverse dictionary of substitution bytes.
 inverse_substitutions = {}
@@ -17,10 +18,13 @@ for line in file:
     line = line.split()
     inverse_substitutions.update({line[1].lower(): line[0].lower()})
 
-inverse_aes_matrix = [[[0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0]],
-                      [[1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0]],
-                      [[1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0]],
-                      [[1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]]]
+# Represents the inverse of the AES matrix to be used in the decryption process
+inverse_aes_matrix = [
+    [[0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0]],
+    [[1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0]],
+    [[1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 0, 0, 0, 0]],
+    [[1, 1, 0, 1, 0, 0, 0, 0], [1, 0, 1, 1, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]]]
+
 
 def inverse_sub_bytes(text: str) -> str:
     """
@@ -55,8 +59,9 @@ def inverse_mix_columns(message_data: list) -> list:
     result = [[0, 0, 0, 0, 0, 0, 0, 0] for i in range(4)]
     for row_index in range(len(inverse_aes_matrix)):
         for message_index in range(len(message_data)):
-            result[row_index] = aes.xor(result[row_index], aes.aes_multiplication(inverse_aes_matrix[row_index][message_index],
-                                                                                  message_data[message_index]))
+            result[row_index] = aes.xor(result[row_index],
+                                        aes.aes_multiplication(inverse_aes_matrix[row_index][message_index],
+                                                               message_data[message_index]))
     return result
 
 
@@ -152,7 +157,8 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
         key_block_index -= 16
         plaintext_block = encryption.add_round_key(plaintext_block, key_block)
         if ciphertext_index >= 16 and decryption_mode == "CBC":
-            plaintext_block = encryption.add_round_key(plaintext_block, decrypted_block[decrypted_block_index: decrypted_block_index + 16])
+            plaintext_block = encryption.add_round_key(plaintext_block,
+                                                       ciphertext_as_bytes[ciphertext_index - 16: ciphertext_index])
             decrypted_block_index += 16
 
         decrypted_block.extend(list(plaintext_block))
@@ -160,21 +166,60 @@ def decryption(c_text: str, init_key: str, decryption_mode: str) -> str:
     return key_expansion.convert_bytes_to_string(decrypted_block)
 
 
-
-
-
 def main():
     """
-    This function asks the user to type in a hexadecimal string and a valid initial key for the decryption process
+    This function asks the user to supply a file with a hexadecimal string and a file with a valid initial
+    key for the decryption process
     """
-    ciphertext = input("Type a cipher text string in hexadecimal: ")
-    initial_key = input("Type an initial key of length 16, 24, or 32 bytes: ")
-    while len(initial_key) not in [16 * 2, 24 * 2, 32 * 2]:
-        initial_key = input("Invalid initial key. Please try again: ")
-    encryption_mode = input("Type ECB or CBC to denote the encryption type: ")
-    while encryption_mode.upper() != 'ECB' and encryption_mode.upper() != 'CBC':
-        encryption_mode = input("Please specify either ECB or CBC: ")
-    print("The plain text is:", decryption(ciphertext, initial_key, encryption_mode))
+    args = sys.argv[1:]
+    if len(args) == 0 or len(args) == 1 and args[0] == "--help" or args[0] == "-h":
+        print("To run the program input the command: python decryption.py --ciphertext=CIPHERTEXT_FILE --key=INITIAL_KEY_FILE --mode=[DECRYPTION_MODE]")
+        print("Program arguments:\n\t",
+              "--ciphertext=CIPHERTEXT_FILE is required. Provide it with the text file that contains the ciphertext in hexadecimal\n\t",
+              "--key=INITIAL_KEY_FILE is required in order to decrypt the message. Provide it with the text file that contains the key in hexadecimal. The key must be either 16, 24, or 32 bytes in length.\n\t",
+              "--mode=[DECRYPTION_MODE] is optional. Provide it with the decryption mode of either ECB or CBC. If not specified, the decryption mode will be ECB\n")
+        print("Examples:\n\t",
+              "python decryption.py --ciphertext=aes-ciphertext10.txt --key=aes-key10.txt\n\t",
+              "python decryption.py --ciphertext=aes-ciphertext10.txt --key=aes-key10.txt --mode=CBC\n")
+        print("If done correctly, your plaintext will be printed onto the terminal.")
+        return
+    if len(args) not in [2, 3]:
+        print("Invalid number of arguments. Please try again.")
+        return
+    ciphertext = None
+    initial_key = None
+    encryption_mode = "ECB"
+    for arg in args:
+        arg = arg.split("=")
+        flag = arg[0]
+        value = arg[1]
+        if flag == "--ciphertext":
+            ciphertext_file = open(value, 'r')
+            ciphertext = ciphertext_file.read()
+            ciphertext_file.close()
+        elif flag == "--key":
+            initial_key_file = open(value, 'r')
+            initial_key = initial_key_file.read()
+            initial_key_file.close()
+            if len(initial_key) not in [16 * 2, 24 * 2, 32 * 2]:
+                print("Invalid initial key length. The initial key should be either 16, 24, or 32 bytes")
+                return
+        elif flag == "--mode":
+            encryption_mode = value
+            if encryption_mode.upper() not in ['ECB', 'CBC']:
+                print("Invalid encryption mode. Please specify either ECB or CBC.")
+                return
+        else:
+            print("Invalid flag(s). Please specify either --ciphertext=CIPHERTEXT_FILE, --key=INITIAL_KEY_FILE, or --mode=[DECRYPTION_MODE]")
+            return
+    if ciphertext is None:
+        print("Please specify the ciphertext using the --ciphertext=CIPHERTEXT_FILE")
+        return
+    if initial_key is None:
+        print("Please specify the initial key using the --key=INITIAL_KEY_FILE")
+        return
+    print("The plaintext is:", decryption(ciphertext, initial_key, encryption_mode))
+
 
 if __name__ == '__main__':
     main()

@@ -6,6 +6,7 @@ PID: wutp20
 Date: 2/21/2022
 """
 import aes
+import sys
 
 # This section of code reads the input from the sbox.txt file and makes a dictionary of substitution bytes.
 substitutions = {}
@@ -19,8 +20,7 @@ round_key_number = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0
                     [0, 0, 0, 0, 0, 0, 0, 0]]
 
 
-def convert_string_to_bytes(
-        string: str) -> list:  # string: 00112233445566778899AABBCCDDEEFF -> [[0,0,0,0,0,0,0,0],[1,0,0,0,1,0,0,0]....]
+def convert_string_to_bytes(string: str) -> list:
     """
     This function takes a string of valid hexadecimal numbers and converting it to a list of bytes.
     Examples:
@@ -78,7 +78,8 @@ def key_expansion(initial_key: str) -> str:
                 round_key_number[0] = aes.x_time(round_key_number[0])
             if j == 4 and expansion_key_length == 32:
                 for i in range(len(temp1)):
-                    temp1[i] = convert_string_to_bytes("".join(list(substitute_bytes(convert_bytes_to_string([temp1[i]]))[::-1]))[::-1])[0]
+                    temp1[i] = convert_string_to_bytes(
+                        "".join(list(substitute_bytes(convert_bytes_to_string([temp1[i]]))[::-1]))[::-1])[0]
             temp2 = expansion_key_as_list[len(expansion_key_as_list) - expansion_key_length:]
             temp2 = temp2[0:4]
             for b_index in range(len(temp2)):
@@ -146,13 +147,37 @@ def switch_nybbles(byte: list) -> list:
 
 def main():
     """
-    This function asks the user to input a valid key and performs the AES key expansion on it
+    This function asks the user to supply a file with a valid key and performs the AES key expansion on it
     """
-    initial_key = input("Input a 16-byte, 24-byte, or 32-byte key: ")
-    while len(initial_key) not in [16 * 2, 24 * 2, 32 * 2]:
-        initial_key = input("The initial key you typed was not 16-bytes, 24-bytes, or 32 bytes long. Try again: ")
+    args = sys.argv[1:]
+    if len(args) == 0 or len(args) == 1 and args[0] == "--help" or args[0] == "-h":
+        print("To run the program input the command: python key_expansion.py --key=INITIAL_KEY_FILE")
+        print("Program arguments:\n\t",
+              "--key=INITIAL_KEY_FILE is required in order to perform key expansion. Provide it with the text file that contains the key in hexadecimal. The key must be either 16, 24, or 32 bytes in length.\n")
+        print("Example:\n\t", "python key_expansion.py --key=aes-key11.txt\n\t",
+              "python encryption.py --key=aes-key12.txt\n")
+        print("If done correctly, your expanded key will be printed onto the terminal.")
+        return
+    if len(args) != 1:
+        print("Invalid number of arguments. Please try again.")
+        return
+    initial_key = None
+    for arg in args:
+        arg = arg.split("=")
+        flag = arg[0]
+        value = arg[1]
+        if flag == "--key":
+            initial_key_file = open(value, 'r')
+            initial_key = initial_key_file.read()
+            initial_key_file.close()
+            if len(initial_key) not in [16 * 2, 24 * 2, 32 * 2]:
+                print("Invalid initial key length. The initial key should be either 16, 24, or 32 bytes")
+                return
+        else:
+            print("Invalid flag(s). Please specify --key=INITIAL_KEY_FILE")
+            return
     print("The expanded key is", key_expansion(initial_key))
+
 
 if __name__ == "__main__":
     main()
-

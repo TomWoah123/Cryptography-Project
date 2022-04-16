@@ -32,11 +32,3 @@ def multiplication(list_one: list, list_two: list) -> list:
         for index_two in range(len(list_two)):
             products[index_one + index_two] += (list_one[index_one] * list_two[index_two]) % 2
     return products
-
-
-
-polynomial_one = [0, 1, 1, 0]
-polynomial_two = [1, 0, 1, 0]
-
-print(addition(polynomial_one, polynomial_two))
-print(multiplication(polynomial_one, polynomial_two))
